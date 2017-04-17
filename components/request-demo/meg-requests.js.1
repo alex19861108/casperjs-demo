@@ -1,0 +1,90 @@
+
+
+/**
+ @description：
+    http协议规定了以ASCII码传输，是建立在tcp、ip协议之上的应用层规范，
+    规范把http请求分为3个部分：状态行，请求头，请求体
+*/
+var MegResponse = function(status_code, text) {
+    this.status_code = status_code;
+    this.text = text;
+};
+
+var MegRequests = function() {
+};
+
+MegRequests.LINE_BREAK = '\r\n';
+MegRequests.DEFAULT_CONTENT_TYPE = 'application/octet-stream';
+
+MegRequests.prototype.bodyBoundary = function() {
+    var boundary = '-------------------' + Math.floor(Math.random() * Math.pow(10, 8));
+    return boundary;
+};
+
+MegRequests.prototype.segmentHeader = function() {
+    var segmentHeader = '--' + boundary + MegRequests.LINE_BREAK;
+    return segmentHeader;
+};
+
+function base64ToBlob(base64, mime) 
+{
+    mime = mime || '';
+    var sliceSize = 1024;
+    var byteChars = window.atob(base64);
+    var byteArrays = [];
+
+    for (var offset = 0, len = byteChars.length; offset < len; offset += sliceSize) {
+        var slice = byteChars.slice(offset, offset + sliceSize);
+
+        var byteNumbers = new Array(slice.length);
+        for (var i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        var byteArray = new Uint8Array(byteNumbers);
+
+        byteArrays.push(byteArray);
+    }
+
+    return new Blob(byteArrays, {type: mime});
+};
+
+MegRequests.prototype.post = function(url, data, headers, files) {
+    var boundary = '-------------------' + Math.floor(Math.random() * Math.pow(10, 8));
+    var rn = '\r\n';
+    var content_arr = [];
+
+
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url, false);
+    var formdata = new FormData();
+    for (var key in data) {
+        formdata.append(key, data[key]);
+    }
+    for (var name in files) {
+        console.log(name + ': ' + files[name]);
+        var file = files[name];
+        window.resolveLocalFileSystemURL(file, function(fileEntry) {
+            fileEntry.file(function(file) {
+                var reader = new FileReader();
+                reader.onloadend = function(e) {
+                    var imgBlob = new Blob([ this.result ], { type: "image/jpeg" } );
+                    formdata.append(name, imgBlob);
+                    console.log(formdata);
+                    //post form call here
+                };
+                reader.readAsArrayBuffer(file);
+            }, function(e){
+                console.log('error.....');
+            });
+        }, function(e){
+            console.log('error2....');
+        });
+    }
+    xhr.send(formdata);
+    
+    return new MegResponse(xhr.status, xhr.responseText);
+};
+
+module.exports = MegRequests;

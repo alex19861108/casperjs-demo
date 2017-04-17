@@ -1,0 +1,162 @@
+
+
+/**
+ @description：
+    http协议规定了以ASCII码传输，是建立在tcp、ip协议之上的应用层规范，
+    规范把http请求分为3个部分：状态行，请求头，请求体
+*/
+var MegResponse = function(status_code, text) {
+    this.status_code = status_code;
+    this.text = text;
+};
+
+var MegRequests = function() {
+};
+
+MegRequests.LINE_BREAK = '\r\n';
+MegRequests.DEFAULT_CONTENT_TYPE = 'application/octet-stream';
+
+MegRequests.prototype.bodyBoundary = function() {
+    var boundary = '-------------------' + Math.floor(Math.random() * Math.pow(10, 8));
+    return boundary;
+};
+
+MegRequests.prototype.segmentHeader = function() {
+    var segmentHeader = '--' + boundary + MegRequests.LINE_BREAK;
+    return segmentHeader;
+};
+
+function base64ToBlob(base64, mime) 
+{
+    mime = mime || '';
+    var sliceSize = 1024;
+    var byteChars = window.atob(base64);
+    var byteArrays = [];
+
+    for (var offset = 0, len = byteChars.length; offset < len; offset += sliceSize) {
+        var slice = byteChars.slice(offset, offset + sliceSize);
+
+        var byteNumbers = new Array(slice.length);
+        for (var i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        var byteArray = new Uint8Array(byteNumbers);
+
+        byteArrays.push(byteArray);
+    }
+
+    return new Blob(byteArrays, {type: mime});
+};
+
+function sleep(milliseconds) {
+  var start = new Date().getTime();
+  for (var i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
+}
+
+MegRequests.prototype.post = function(url, data, headers, files) {
+    var boundary = '-------------------' + Math.floor(Math.random() * Math.pow(10, 8));
+    var rn = '\r\n';
+    var content_arr = [];
+
+    // main body
+    // proc data
+    for (var key in data) {
+        var separator = '--' + boundary + rn;
+        content_arr.push(separator);
+        var mimeHeader = 'Content-Disposition: form-data; name="' + key + '";';
+        content_arr.push(mimeHeader + rn);
+        content_arr.push(rn);
+        content_arr.push(data[key] + rn);
+    }
+
+    // proc files
+    for (var name in files) {
+        var file = files[name];
+        content_arr.push('--' + boundary + rn);
+        var mimeHeader = 'Content-Disposition: form-data; name="' + name + '";';
+        mimeHeader += ' filename="' + file + '";';
+        content_arr.push(mimeHeader + rn);
+        //content_arr.push('Content-Type: application/octet-stream' + rn);
+        content_arr.push('Content-Type: image/jpeg' + rn);
+        //content_arr.push('Content-Transfer-Encoding: binary' + rn);
+        content_arr.push(rn);
+
+        var file_handler = fs.open(file, 'rb');
+        // binary content
+        var bin_content = fs.read(file, {mode: 'rb'});
+        //var file_content = fs.read(file, {mode: 'r'});
+        //console.log(bin_content.length);
+        content_arr.push(bin_content + rn);
+    };
+
+    // proc ends
+    content_arr.push('--' + boundary + '--' + rn);
+    console.info(content_arr);
+
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == XMLHttpRequest.DONE) {
+            //console.log('DONE');
+            console.info('[DONE] ' + xhr.responseText);
+        }
+    };
+    /**
+    xhr.onloadstart = function() { console.log('onload start'); };
+    xhr.upload.onloadstart = function() {};
+    xhr.upload.onprogress = function(event) {
+        if (event.lengthComputable) {
+            console.log( 'speed: ' + (event.loaded/event.total)*100 );
+        } else {
+            console.log('cannot determine the size of the file');
+        }
+    };
+    xhr.upload.onload = function() { console.log('upload onload'); };
+    xhr.upload.onloadend = function() { console.log('upload onload end'); };
+    xhr.onprocess = function() {};
+    xhr.onload = function() { /*console.log('onload');* / };
+    xhr.onloadend = function() { /*console.log('onload end'); * / };
+    xhr.onerror = function() { console.log('error....'); };
+    //console.log(JSON.stringify(xhr));
+    */
+
+    // send requests
+    xhr.open("POST", url, false);
+    if (true) {
+        body = new Blob(content_arr, {type: "multipart/form-data; boundary=" + boundary});
+    } else {
+        body = content_arr.join('');
+        xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+//        xhr.setRequestHeader("Content-Length", body.length);
+    }
+    //console.info(body.size);
+    //xhr.setRequestHeader("Content-Length", body.size);
+    //console.info(body.type);
+
+    if (headers != undefined) {
+        for (var header_key in headers) {
+            xhr.setRequestHeader(header_key, headers[header_key]);
+        }
+    }
+
+    //xhr.send(body);
+
+    var formdata = new FormData();
+    for (var key in data) {
+        formdata.append(key, data[key]);
+    }
+    for (var name in files) {
+        console.log(name + ': ' + files[name]);
+        //formdata.append(name, fs.open(files[name], 'rb'));
+        formdata.append(name, files[name]);
+    }
+    xhr.send(formdata);
+    
+    return new MegResponse(xhr.status, xhr.responseText);
+};
+
+module.exports = MegRequests;
