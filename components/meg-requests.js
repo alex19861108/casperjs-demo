@@ -17,34 +17,39 @@ MegRequests.prototype.post = function(url, data, headers, files) {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (xhr.readyState == XMLHttpRequest.DONE) {
-            console.info('[DONE] ' + xhr.responseText);
+            console.debug('[DONE] ' + xhr.responseText);
         }
     };
 
     // send requests
     xhr.open("POST", url, false);
-    if (headers != undefined) {
-        for (var header_key in headers) {
-            xhr.setRequestHeader(header_key, headers[header_key]);
+    if (typeof headers == 'object') {
+        for (var key in headers) {
+            xhr.setRequestHeader(key, headers[key]);
         }
     }
 
+    // compose form data
     var formdata = new FormData();
-    for (var key in data) {
-        formdata.append(key, data[key]);
-    }
-    for (var name in files) {
-        var pieces = fs.absolute(files[name]).split('/');
-        var basename = pieces[pieces.length -1];
-        var binaryContent = fs.read(files[name], {mode:'rb'});
-        var aBuffer = new window.ArrayBuffer(binaryContent.length);
-        var uBuffer = new window.Uint8Array(aBuffer);
-        for(var i = 0; i < binaryContent.length; i++){
-            uBuffer[i] = binaryContent.charCodeAt(i) & 0xff ;
+    if (typeof data == 'object') {
+        for (var key in data) {
+            formdata.append(key, data[key]);
         }
+    }
+    if (typeof files == 'object') {
+        for (var name in files) {
+            var pieces = fs.absolute(files[name]).split('/');
+            var basename = pieces[pieces.length -1];
+            var binaryContent = fs.read(files[name], {mode:'rb'});
+            var aBuffer = new window.ArrayBuffer(binaryContent.length);
+            var uBuffer = new window.Uint8Array(aBuffer);
+            for(var i=0; i < binaryContent.length; i++){
+                uBuffer[i] = binaryContent.charCodeAt(i) & 0xff ;
+            }
 
-        var imgBlob = new Blob([uBuffer], { type: MegRequests.DEFAULT_CONTENT_TYPE});
-        formdata.append(name, imgBlob, basename);
+            var imgBlob = new Blob([uBuffer], { type: MegRequests.DEFAULT_CONTENT_TYPE});
+            formdata.append(name, imgBlob, basename);
+        }
     }
     xhr.send(formdata);
     

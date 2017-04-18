@@ -25,7 +25,7 @@ Login.prototype.login = function() {
         test.assertHttpStatus(200);
     }).waitForSelector(
         'form.general-form', function then() {
-            this.capture('pic/step1.png');
+            this.capture('pic/login-' + new Date().getTime() + '.png');
         }, function timeout() {
             this.die('open index.url failed.', 1);
         }   
@@ -44,7 +44,7 @@ Login.prototype.login = function() {
     }).waitForSelector(
         '.header-component', function then() {
             //this.debugHTML();
-            this.capture('pic/result.png');
+            this.capture('pic/result-' + new Date().getTime() + '.png');
         }, function timeout() {
             this.die('login time out', 1); 
     }); 

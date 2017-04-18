@@ -9,15 +9,10 @@ DetectRunner.prototype.run = function() {
     var config = this.config;
     var test = this.test;
 
-    casper.test.comment("python script");
-
     var MegRequests = require('./meg-requests.js');
     var megRequests = new MegRequests();
-    megRequests.post(config.detect.url, config.detect.data, config.detect.headers, config.detect.files);
-
-    casper.thenOpen("http://www.baidu.com", function() {
-        test.assertNotExists('img#s_lg_img');
-    });
+    var response = megRequests.post(config.detect.url, config.detect.data, config.detect.headers, config.detect.files);
+    console.debug(JSON.stringify(response));
 
     /**
     casper.thenOpen(config.detect.url, {
